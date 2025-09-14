@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Missed Love Note</title>
+  <style>
+    :root{--bg1:#000;--bg2:#0a0a0a;--card:#0b0b0b}
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:'Courier New', monospace;overflow:hidden}
+    body{
+      background:radial-gradient(circle at top,#111 0%,#000 100%);
+      color:#e6eef8;display:flex;align-items:center;justify-content:center;padding:32px;position:relative;
+    }
+    body::after{
+      content:"";
+      position:absolute;inset:0;
+      background:rgba(0,0,0,0.75);
+      backdrop-filter: blur(2px);
+      z-index:0;
+    }
+    canvas#particles{position:absolute;inset:0;z-index:0;mix-blend-mode:screen}
+    .container{max-width:900px;width:100%;position:relative;z-index:1;}
+
+    .card{
+      background:rgba(20,20,20,0.7);
+      border:1px solid rgba(255,0,0,0.2);
+      backdrop-filter: blur(4px);
+      border-radius:8px;padding:28px;box-shadow:0 0 20px rgba(255,0,0,0.3), inset 0 0 10px rgba(255,255,255,0.05);
+      animation: pulse 3s infinite alternate;
+    }
+    @keyframes pulse {
+      0% { box-shadow:0 0 10px rgba(255,0,0,0.4); }
+      100% { box-shadow:0 0 30px rgba(255,0,0,0.9); }
+    }
+
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;border-bottom:1px dashed rgba(255,0,0,0.3);padding-bottom:8px}
+    h1{font-size:22px;margin:0;color:#ff5555;text-shadow:0 0 5px #ff0000}
+    .meta{font-size:12px;color:rgba(255,180,180,0.7)}
+
+    .note{white-space:pre-wrap;font-size:15px;line-height:1.6;color:#f1f7ff;min-height:220px;max-height:400px;overflow-y:auto;text-shadow:0 0 4px rgba(255,0,0,0.4)}
+
+    .controls{display:flex;gap:12px;align-items:center;margin-top:18px}
+    .btn{
+      appearance:none;border:0;padding:10px 16px;border-radius:4px;font-weight:600;cursor:pointer;
+      background:linear-gradient(135deg,#ff0000,#660000);
+      color:white;box-shadow:0 0 10px rgba(255,0,0,0.6);
+      transform:translateY(0) scale(1);transition:transform .25s ease, box-shadow .25s ease;
+      position:relative;overflow:hidden;
+    }
+    .btn:hover{transform:translateY(-3px) scale(1.05);box-shadow:0 0 25px rgba(255,50,50,1)}
+    .btn:active{transform:translateY(1px) scale(.95)}
+    .btn.ghost{background:transparent;border:1px dashed rgba(255,0,0,0.6);color:#ff8888}
+
+    .btn::after {
+      content:'';
+      position:absolute;
+      top:50%;left:50%;
+      width:0;height:0;
+      background:rgba(255,255,255,0.3);
+      border-radius:50%;
+      transform:translate(-50%,-50%);
+      transition:width .5s,height .5s;
+    }
+    .btn:active::after {width:200px;height:200px;}
+
+    .cursor{display:inline-block;width:8px;height:18px;background:#ff3333;margin-left:4px;vertical-align:bottom;animation:blink .9s steps(2) infinite}
+    @keyframes blink{50%{opacity:0}}
+
+    .emoji {position:absolute; font-size:20px; opacity:0.8;animation: floatUp 6s linear infinite;}
+    @keyframes floatUp {0% { transform:translateY(0) scale(1); opacity:1; }100% { transform:translateY(-600px) scale(1.5); opacity:0; }}
+
+    @media (max-width:640px){.card{padding:18px}.note{font-size:14px}}
+
+    /* Password modal */
+    .modal {
+      position: fixed; inset:0; display:flex; align-items:center; justify-content:center;
+      background: rgba(0,0,0,0.8); z-index:1000; visibility:hidden; opacity:0; transition:opacity .3s;
+    }
+    .modal.active {visibility:visible; opacity:1;}
+    .modal-content {
+      background:#111; border:1px solid #ff3333; padding:24px; border-radius:8px; text-align:center; color:#fff;
+      box-shadow:0 0 25px rgba(255,0,0,0.7); position:relative;
+    }
+    .modal-content h2 {margin-top:0; color:#ff5555;}
+    .modal-content input {
+      padding:10px; border-radius:4px; border:1px solid #ff5555; background:#222; color:#fff; margin-top:10px;
+    }
+    .modal-content .error {color:#ff5555; font-size:13px; margin-top:8px; min-height:16px;}
+    .close-btn {
+      position:absolute; top:8px; right:8px; background:transparent; border:none; color:#ff5555; font-size:20px; cursor:pointer;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="particles"></canvas>
+  <div class="container">
+    <div class="card">
+      <header>
+        <div>
+          <h1>Broken Note</h1>
+          <div class="meta">Dil ke tukde — shattered feelings <br> <h3 style="font-family: 'Times New Roman', Times, serif; font-size:large;color: #b62929;">iska password sirf tum unlock kr skti ho <br>tumaahare alwa koi ni padh skta</h3></div>
+        </div>
+        <div class="meta">Written By AS❤️‍🩹</div>
+      </header>
+
+      <div id="note" class="note" aria-live="polite"></div>
+
+      <div class="controls">
+        <button id="start" class="btn" data-password="as sanjana">Start</button>
+        <button id="pause" class="btn ghost">Pause</button>
+        <button id="reset" class="btn ghost">Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Password Modal -->
+  <div id="passwordModal" class="modal">
+    <div class="modal-content">
+      <button class="close-btn" id="closeModal">✕</button>
+      <h2>Enter Password</h2>
+      <input type="password" id="passwordInput" placeholder="Password..." />
+      <div class="error" id="errorMsg"></div>
+      <button id="submitPassword" class="btn" style="margin-top:12px;">Unlock</button>
+    </div>
+  </div>
+
+  <script>
+    const text = `So aaj hai 25 may 2025  9:10 am\n mai aaj unko bahut Miss kr rha tha tabhi maine socha unke baare me thoda note hi likh lu tabhi unka msg aaya baat to ho hi rhi thi par syd papa aagye jisse baat me rukawat aa gyi sad to hua but bacha ko promise Kiya tha mai sad ni hounga to isliye upar se thoda muskura rha par dard to hota hi hai dil ka dard to aaplog smjhte hi honge Abhi mai ye sab likh hi rha tha ku unka message aaya jisme likha tha ki wo apni mummy k pass ja rhi papa ne unko syd kuchh bola tha pta n ku hamare saath yesa hota jisse hm sbse jyada pyaar krte use sab koi satate h ye sab soch ke hi bahut rona aata h par kya kru dur hu n unse but unko ye bhi ni bol skta sab chhor k mere pass aajaiye, ni bol skta kyuki unko lagega mai selfish hu sirf apne baare me sochta hu  mujhe sachme bahut yaad aati aapka bacha please bhagwan hamari madad kijiye hme ek dusre se dur ni rehna ab 😭 bacha aapko bahut yaad aa rhi h kya kru smjh ni aa rha control to kr rha hu but ho ni rha.\n Time 12:25 pm\n ye wo time h aaj ka ye wo time h jb mujhe uske msg ne mujhe puri tod diya ye bolke agar sha ni jata to long distance love krte hi ku h log 😣 ye word sun k kuchh bol to nhi paaya bs jaise taise reply kiya usko  but ye soch hi dukh lg rha ki wo mujhe yesa kaise bol skti h 😭 aaj phir se wo tuta dil leke aage badhne ka time h, sacha pyaar ka to YHI mtlb h puri trah se dard se bhari jindaggi😭.\n\nTime 10:17 pm\njab mai ye likh rha hu, mujhe likhte hue bahut Khushi ho rhi hai kyuki Maine aaj mummy jii se baat kiya ji ha meri sasu maa se mujhe ni pta unko kaisa lga but mai itna khush hu ki bta skta sasu maa se video call pe bhi baat Hui but mujhe ni pata mai unko pasand aaya ya ni but khusi is baat ki h unhone  mujhse baat ki🥹.\n\n Time:- 11:57 am , 14 sep 2025 \nFuck yrrr kya likhu dimaag ki maa chud gyi yrrr mujhe ku aaay yese sapne ku aa rhe hai, usne  mujhe chhor diya h n phir mujhe ku aaye itna ghatiya spne mujhe sone ku ni de rhi uski yaade  ku aa rhe h uske spne 😭 . Soye hue ek ghante bhi ni hua itna ghatiya spna aaya ki nind hi Tut gyi kyu😭.\nMeri dil bhut zor se dhadk rhi h usse baat bhi krne ki kosis kiya but uske attitude k siwaye kuchh ni Mila itna byakhul bol bhi ni pa rha tha par usko koi fark ni pada . Pata n ku syd sachme ab dono k bich kuchh ni rha bhul gyi h wo mujhe lekin mai ku ni bhula rha pehle hi itna dard de chuki hai phirbhi ku ni bhula rha har baar mujhe wo hurt krti h phir bhi uske sone ku aa rhe hai mujhe aaj bhi usne puchha tk ni kya hua yesi haalat h meri bhai tk puchha kya hua achanak se sbko lga kuchh attack sa aaya hai but kya tha mujhe ni pata .wo jaise aaya tha bina ruke maine usko call kyuki sote hue uski spne aa rhi thi aur achank se ye sab hua . Aage kuchh ni likh pa rha bye I thought ye meri last msg hai.`;
+
+    const noteEl = document.getElementById('note');
+    const startBtn = document.getElementById('start');
+    const pauseBtn = document.getElementById('pause');
+    const resetBtn = document.getElementById('reset');
+
+    let i = 0, timer = null, playing = false;
+
+    function typeStep(){
+      if(i >= text.length){
+        playing = false; clearInterval(timer); showCursor(false); return;
+      }
+      noteEl.textContent += text[i];
+      i++;
+      noteEl.scrollTop = noteEl.scrollHeight;
+    }
+
+    function showCursor(flag){
+      const existing = document.querySelector('.cursor');
+      if(flag && !existing){
+        const c = document.createElement('span'); c.className='cursor'; noteEl.appendChild(c);
+      } else if(!flag && existing){ existing.remove(); }
+    }
+
+    // Password modal logic
+    const modal = document.getElementById('passwordModal');
+    const passwordInput = document.getElementById('passwordInput');
+    const errorMsg = document.getElementById('errorMsg');
+    const submitPassword = document.getElementById('submitPassword');
+    const closeModal = document.getElementById('closeModal');
+
+    function tryUnlock(){
+      const correctPass = startBtn.dataset.password;
+      if(passwordInput.value === correctPass){
+        modal.classList.remove('active');
+        if(playing) return;
+        playing=true; showCursor(true);
+        timer = setInterval(typeStep, 20 + Math.random()*50);
+      } else {
+        errorMsg.textContent = 'Wrong password! Are insta ka pass try kro';
+      }
+    }
+
+    startBtn.addEventListener('click', ()=>{
+      if(playing) return; // ignore if already playing
+      modal.classList.add('active');
+      passwordInput.value = '';
+      errorMsg.textContent = '';
+      passwordInput.focus();
+    });
+
+    submitPassword.addEventListener('click', tryUnlock);
+    passwordInput.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter'){
+        tryUnlock();
+      }
+    });
+
+    closeModal.addEventListener('click', ()=>{
+      modal.classList.remove('active');
+    });
+
+    pauseBtn.addEventListener('click', ()=>{
+      if(!playing) return; playing=false; clearInterval(timer); showCursor(false);
+    });
+
+    resetBtn.addEventListener('click', ()=>{
+      playing=false; clearInterval(timer); i=0; noteEl.textContent=''; showCursor(false);
+    });
+
+    // Broken glitch-style particles
+    const canvas = document.getElementById('particles');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    function resize(){canvas.width=innerWidth;canvas.height=innerHeight}
+    window.addEventListener('resize',resize);resize();
+
+    function createParticles(){
+      particles=[];
+      for(let i=0;i<120;i++){
+        particles.push({
+          x:Math.random()*canvas.width,
+          y:Math.random()*canvas.height,
+          r:Math.random()*2+1,
+          dx:(Math.random()-.5)*2.5,
+          dy:(Math.random()-.5)*2.5,
+          color:`rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*50)},${Math.floor(Math.random()*50)},0.8)`
+        });
+      }
+    }
+    createParticles();
+
+    function animateParticles(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      for(let p of particles){
+        ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+        ctx.fillStyle=p.color; ctx.fill();
+        p.x+=p.dx;p.y+=p.dy;
+        if(p.x<0||p.x>canvas.width) p.dx*=-1;
+        if(p.y<0||p.y>canvas.height) p.dy*=-1;
+      }
+      requestAnimationFrame(animateParticles);
+    }
+    animateParticles();
+
+    // Floating emojis effect
+    const emojis = ['💔','😢','🥀','😭','🖤','💔','❤️‍🩹','💔','❤️‍🩹','💔','❤️‍🩹','💔','❤️‍🩹','💔','❤️‍🩹','💔','❤️‍🩹','💔','❤️‍🩹','💔','❤️‍🩹'];
+    function spawnEmoji(){
+      const e = document.createElement('div');
+      e.className='emoji';
+      e.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+      e.style.left = Math.random()*100 + 'vw';
+      e.style.bottom = '-40px';
+      e.style.animationDuration = 4 + Math.random()*4 + 's';
+      document.body.appendChild(e);
+      setTimeout(()=> e.remove(), 8000);
+    }
+    setInterval(spawnEmoji, 2000);
+
+    (function intro(){
+      noteEl.textContent='';
+      noteEl.style.opacity=0; setTimeout(()=>{noteEl.style.transition='opacity .6s'; noteEl.style.opacity=1;},200);
+    })();
+  </script>
+</body>
+</html>
